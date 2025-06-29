@@ -104,7 +104,7 @@ func getUserData() {
 	serverURL = "http://localhost:8080"
 	msgEndpoint = "/app/impl/msg"
 	loginEndPoint = "/app/impl/sendLogin"
-	username = "test"
+	username = "userTEST"
 	sharedSecret = "passphrasewhichneedstobe32bytes!"
 
 	fmt.Println("Enter y to customize config")
