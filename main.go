@@ -34,7 +34,6 @@ var (
 
 func main() {
 	l = *log.Default()
-	sharedSecret = "passphrasewhichneedstobe32bytes!"
 	dataUtils := utils.InitData{
 		Logger: &l,
 	}
@@ -44,12 +43,16 @@ func main() {
 
 	sendImplLogin()
 
-	sendUserMessage()
-
+	
+	fmt.Println("\n\n\n\nENTERING SERVER COMMUNICATION")
+	fmt.Println("PRESS CONTROLL+C OR TYPE \"quit\" to exit")
+	for {sendUserMessage()}
 }
 
 func sendUserMessage() {
 	msg := getUserMessage()
+
+	if msg == "quit" {os.Exit(0)}
 
 	encryptedMSG := encrypt(msg, string(sessionKey))
 
@@ -73,8 +76,19 @@ func sendUserMessage() {
 	response, err := client.Do(request)
 	utils.CheckFatal("Could not do Request: ", err)
 
-	l.Println(response)
+	// use server response
+	var serverMSG message
+	err = json.NewDecoder(response.Body).Decode(&serverMSG)
+	utils.CheckFatal("ERROR decoding server resp msg: ", err)
+	
+	if serverMSG.Sid != sessionID {
+		l.Fatal("Server SID and Client SID do not match after server responded: SERVER SID:", serverMSG.Sid)
+	}
 
+	serverMessage := decrypt(
+		string(fromBase64(serverMSG.Message)), 
+		string(sessionKey))
+	fmt.Println("SERVER RESPONDED:\n", serverMessage)
 }
 
 func getUserMessage() string {
@@ -87,20 +101,35 @@ func getUserMessage() string {
 }
 
 func getUserData() {
-	fmt.Println("SERVER CONFIGURATION")
-	serverURL = getUserInput("server url", "http://localhost:8080")
-	msgEndpoint = getUserInput("msg endpoint", "/app/impl/msg")
-	loginEndPoint = getUserInput("login endpoint", "/app/impl/sendLogin")
-	fmt.Println("\n\n\nUSER CONFIGURATION")
-	username = getUserInput("username", "test")
-	sharedSecret = getUserInput("shared secret", sharedSecret)
-	var bashse []byte
-	bashse = []byte(sharedSecret)
+	serverURL = "http://localhost:8080"
+	msgEndpoint = "/app/impl/msg"
+	loginEndPoint = "/app/impl/sendLogin"
+	username = "test"
+	sharedSecret = "passphrasewhichneedstobe32bytes!"
 
-	if len(bashse) != 32 {
-		panic("Your shared secret needs to be 32 bit long")
+	fmt.Println("Enter y to customize config")
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	err := scanner.Err()
+	utils.CheckFatal("ERROR during get user input skip: ", err)
+	if scanner.Text() == "y" {
+
+		fmt.Println("SERVER CONFIGURATION")
+		serverURL = getUserInput("server url", serverURL)
+		msgEndpoint = getUserInput("msg endpoint", msgEndpoint)
+		loginEndPoint = getUserInput("login endpoint", loginEndPoint)
+		fmt.Println("\n\n\nUSER CONFIGURATION")
+		username = getUserInput("username", username)
+		sharedSecret = getUserInput("shared secret", sharedSecret)
+		var bashse []byte
+		bashse = []byte(sharedSecret)
+
+		if len(bashse) != 32 {
+			panic("Your shared secret needs to be 32 bit long")
+		}
+		fmt.Println("CONFIGURATION COMPLETED\n\n\n")
+
 	}
-	fmt.Println("CONFIGURATION COMPLETED\n\n\n")
 }
 
 func getUserInput(prompt string, defaultValue string) string {
@@ -155,14 +184,14 @@ func sendImplLogin() {
 	client := &http.Client{}
 	response, err := client.Do(request)
 	utils.CheckFatal("Could not do Request", err)
-	l.Println("Sending Data to Server: ",
-		"\nUsername: ", username,
-		"\nData: ", myNounce,
+	// l.Println("Sending Data to Server: ",
+		// "\nUsername: ", username,
+		// "\nData: ", myNounce,
 		// "\nencData: ", encryptedData,
 		// "\nbase64Data: ", sendingData.EncryptedData,
 		// "\nBody: ", string(body),
-		"\nResponse:\n", response)
-	fmt.Printf("\n\n")
+		// "\nResponse:\n", response)
+	// fmt.Printf("\n\n")
 
 	// Handeling Server Response
 	var sResponse serverResponse
